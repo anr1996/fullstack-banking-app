@@ -1,0 +1,17 @@
+# Build artifacts
+target/
+*.jar
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+
+# Secrets
+.env
+*.pem
+*.key

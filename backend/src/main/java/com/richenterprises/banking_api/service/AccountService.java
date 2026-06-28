@@ -8,7 +8,7 @@ import com.richenterprises.banking_api.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
@@ -59,6 +59,7 @@ public class AccountService {
      * 
      * @return (Returns a list of accounts.)
      */
+    @Transactional(readOnly = true)
     public List<Account> getCurrentUserAccounts() {
         String email = getCurrentUserEmail();
 

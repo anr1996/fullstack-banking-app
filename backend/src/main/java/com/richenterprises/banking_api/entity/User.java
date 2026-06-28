@@ -11,6 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 // Java Time import
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * user entity for authentication and role-based access control.
@@ -39,6 +40,7 @@ public class User {
     private String email;
 
     /* Hash encrypted password */
+    @JsonIgnore
     @Column(nullable = false)
     private String passwordHash;
 

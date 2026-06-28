@@ -47,4 +47,3 @@ public class AccountController {
     }
 }
 
-// eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzgyNjIwODA4LCJleHAiOjE3ODI2MjE3MDh9.yWLaQ_n2L-4bBACisOYFm86akOgAoTT_aQ27gyaD0Wc

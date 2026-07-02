@@ -88,5 +88,15 @@ public class AccountService {
    private String generateAccountNumber() {
     return "ACC-" + UUID.randomUUID().toString().substring(0,8).toUpperCase();
    }
-    
+
+   /**
+    * This will return all accounts in the system.
+    * Admin-only operation.
+    * 
+    * @return (Returns a list of all accounts.)
+    */
+   @Transactional(readOnly = true)
+   public List<Account> getAllAccounts() {
+    return accountRepository.findAll();
+   }
 }

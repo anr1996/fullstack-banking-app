@@ -31,7 +31,7 @@ public class JwtUtil {
     * It is injected from application.properties
     * Default: 15 minutes = 900,000 ms.
     */
-   @Value("${jwt.experation:900000}")
+   @Value("${jwt.expiration:900000}")
    private long expiration;
    
     /**

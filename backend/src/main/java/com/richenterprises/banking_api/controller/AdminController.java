@@ -37,8 +37,6 @@ public class AdminController {
     public ResponseEntity<List<Account>> getAllAccounts() {
         return ResponseEntity.ok(accountService.getAllAccounts());
     }
-
-
-    
-    
 }
+
+// eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzgzMDE5OTg0LCJleHAiOjE3ODMwMjA4ODR9.u7E6deD9PoebJ7aj0kglu1Ge0hy_JasYen52SIx-CNo

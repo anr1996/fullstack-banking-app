@@ -97,6 +97,10 @@ public class AccountService {
     */
    @Transactional(readOnly = true)
    public List<Account> getAllAccounts() {
-    return accountRepository.findAll();
+        List<Account> accounts = accountRepository.findAll();
+        // This will force Hibernate to load the user data before the session closes.
+        // Without this, Jackson will crash with 'LazyInitializationException'.
+        accounts.forEach(account -> account.getUser().getEmail());
+        return accounts;
    }
 }

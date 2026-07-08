@@ -49,7 +49,7 @@ curl -X GET http://localhost:8080/api/me \
 | # | Goal | Status |
 |---|------|--------|
 | 1 | Foundation + Auth | Complete |
-| 2 | Accounts + RBAC | In Progress |
+| 2 | Accounts + RBAC | Complete |
 | 3 | Transactions | Pending |
 | 4 | Atomic Transfers | Pending |
 | 5 | React Frontend | Pending |

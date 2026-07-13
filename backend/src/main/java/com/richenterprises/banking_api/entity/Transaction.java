@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * The financial transaction entity.
@@ -31,6 +32,7 @@ public class Transaction {
      * Many transactions can belong to one account.
      * LAZY fetch means account data is loaded only when it is accessed.
      */
+    @JsonIgnore
     @ManyToOne(fetch= FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;

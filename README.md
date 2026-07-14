@@ -51,8 +51,8 @@ curl -X GET http://localhost:8080/api/me \
 | 1 | Foundation + Auth | Complete |
 | 2 | Accounts + RBAC | Complete |
 | 3 | Transactions | Complete |
-| 4 | Atomic Transfers | Pending |
-| 5 | React Frontend | Pending |
+| 4 | Atomic Transfers | Complete |
+| 5 | React Frontend | In Progress |
 | 6 | Tests + Hardening | Pending |
 | 7 | Docker + CI/CD + Deploy | Pending |
 

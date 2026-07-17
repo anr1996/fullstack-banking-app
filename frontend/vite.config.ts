@@ -6,10 +6,22 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/auth': 'http://localhost:8080',
-      '/accounts': 'http://localhost:8080',
-      '/transfers': 'http://localhost:8080',
-      '/admin': 'http://localhost:8080',
+      '/auth': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/accounts': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/transfers': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/admin': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })

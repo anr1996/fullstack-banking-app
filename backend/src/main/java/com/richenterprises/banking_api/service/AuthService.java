@@ -3,12 +3,17 @@ package com.richenterprises.banking_api.service;
 import com.richenterprises.banking_api.dto.AuthResponse;
 import com.richenterprises.banking_api.dto.LoginRequest;
 import com.richenterprises.banking_api.dto.RegisterRequest;
+import com.richenterprises.banking_api.entity.Account;
+import com.richenterprises.banking_api.entity.AccountType;
 import com.richenterprises.banking_api.entity.Role;
 import com.richenterprises.banking_api.entity.User;
+import com.richenterprises.banking_api.repository.AccountRepository;
 import com.richenterprises.banking_api.repository.UserRepository;
 import com.richenterprises.banking_api.util.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 /**
  * This is the authentication service. 
@@ -18,6 +23,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     
@@ -25,10 +31,12 @@ public class AuthService {
      * The constructor injection of all dependencies. 
      * Spring will provide these beans from the application context.
      */
-    public AuthService(UserRepository userRepository, 
+    public AuthService(UserRepository userRepository,
+                       AccountRepository accountRepository,
                        PasswordEncoder passwordEncoder, 
                        JwtUtil jwtUtil) {
                         this.userRepository = userRepository;
+                        this.accountRepository = accountRepository;
                         this.passwordEncoder = passwordEncoder;
                         this.jwtUtil = jwtUtil;
     }
@@ -58,7 +66,19 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // Step 4 Generate the JWT token.
+        // step 4: Create a default CHECKING account for the new user.
+        // Every bank customer needs at least one account to use the services.
+        Account checkingAccount = Account.builder()
+                                  .user(user)
+                                  .accountNumber(generateAccountNumber())
+                                  .type(AccountType.CHECKING)
+                                  .balance(0L) // $0.00 The starting balance.
+                .status(com.richenterprises.banking_api.entity.AccountStatus.ACTIVE)
+                .build();
+        
+        accountRepository.save(checkingAccount);
+
+        // Step 5 Generate the JWT token.
         String token = jwtUtil.generateToken(user.getEmail(), 
                                              user.getRole().name());
 
@@ -94,7 +114,16 @@ public class AuthService {
 
         return AuthResponse.builder()
                             .token(token)
-                            .build();
-                                      
+                            .build();                          
+    }
+
+    /** 
+     * This will generate a unique account number.
+     * Format: ACC- + first 8 characters of a UUID
+     * 
+     * @return (Returns a unique account number string.)
+     */
+    private String generateAccountNumber() {
+        return "ACC-" + UUID.randomUUID().toString().substring(0,8).toUpperCase();
     }
 }

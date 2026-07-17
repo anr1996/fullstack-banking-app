@@ -50,6 +50,11 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    // The state for opening a new account
+    const [showNewAccountForm, setShowNewAccountForm] = useState(false);
+    const [newAccountType, setNewAccountType] = useState('CHECKING');
+    const [newAccountError, setNewAccountError] = useState('');
+
     /**
      * The useEffect runs after the component mounts.
      * It will check authentication and fetch the account data.
@@ -153,6 +158,34 @@ export default function Dashboard() {
 
 
     /**
+     * This will open a new financial account (checking, savings, etc.) for the current user.
+     * 
+     * @param e (The form submit event.)
+     */
+    async function handleOpenAccount(e: React.FormEvent) {
+        e.preventDefault();
+        setNewAccountError('');
+
+        try {
+            await apiFetch(`/accounts?type=${newAccountType}`, {
+                method: 'POST',
+        
+            });
+
+            // Refresh the account list to show the new account
+            const updatedAccounts = await apiFetch('/accounts');
+            setAccounts(updatedAccounts);
+            setShowNewAccountForm(false);
+            setNewAccountType('CHECKING');
+
+        } catch (error: any) {
+            setNewAccountError(error.message || 'Failed to open the account.');
+        }
+
+             
+    }
+
+    /**
      * This will log the user out by clearing the token and redirecting to login.
      */
     function handleLogout() {
@@ -172,6 +205,30 @@ export default function Dashboard() {
 
             <section>
                 <h2>Your Accounts</h2>
+
+                {/** The button to open a new account */}
+                {!showNewAccountForm ? (
+                    <button onClick={() => setShowNewAccountForm(true)}>Open New Account</button>
+                ) : (
+                    <form onSubmit={handleOpenAccount}>
+                        <div>
+                            <label>Account Type</label>
+                            <select
+                            value={newAccountType}
+                            onChange={(e) => setNewAccountType(e.target.value)}
+                            >
+                                <option value="CHECKING">Checking</option>
+                                <option value="SAVINGS">Savings</option>
+                            </select>
+                        </div>
+                        {newAccountError && <p className="error">{newAccountError}</p>}
+                        <button type="submit">Create Account</button>
+                        <button type="button" onClick={() => setShowNewAccountForm(false)}>
+                            Cancel
+                        </button>
+                    </form>
+                )}
+
                 {accounts.length === 0 ? (
                     <p>No accounts found.</p>
                 ) : (

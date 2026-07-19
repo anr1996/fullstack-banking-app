@@ -21,6 +21,7 @@ export default function Login() {
     const[email, setEmail] = useState('');
     const[password, setPassword] = useState('');
     const[error, setError] = useState('');
+    const[isLoading, setIsLoading] =useState(false); // Added: loading stated.
 
     /**
      * This will handle form submission
@@ -35,6 +36,8 @@ export default function Login() {
 
         // This clears any previous error message before attempting a new login.
         setError('');
+
+        setIsLoading(true);
 
         try {
             // The apiFetch sends the POST request to /auth/login with the email and password.
@@ -51,8 +54,16 @@ export default function Login() {
             // This is the client-side navigation (no page reload).
             navigate('/dashboard');
         } catch (error: any) {
-            // If the server returns 401 or any error, display it to the user.
-            setError(error.message || 'Login failed.');
+            // Added: specific error messages.
+            if (error.message.includes('400')) {
+                setError('Invalid email or password format. Please check your inputs.');
+            } else if (error.message.includes('401')) {
+                setError('Invalid credentials. Please check your email and password.')
+            } else {
+                setError(error.message || 'Login failed.');
+            }
+        } finally {
+            setIsLoading(false); // Added: Clear Loading.
         }
     }
 
@@ -75,6 +86,7 @@ export default function Login() {
                     required
                     pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
                     title="Please enter a valid email address (e.g., user@example.com)"
+                    disabled={isLoading} // Added: Disable during request.
                     />
                 </div>
                 <div>
@@ -84,6 +96,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={isLoading} // Added: Disable during request.
                     />
                 </div>
 
@@ -91,10 +104,19 @@ export default function Login() {
                  * empty.
                  */}
                 {error && <p className="error">{error}</p>}
-                <button type="submit">Login</button>
+                <button type="submit" disabled={isLoading}>
+                    {isLoading ? 'Logging in...' : 'Login'}
+                    </button>
             </form>
             <p>
                 no account? <a href="/register">Register</a>
+            </p>
+
+            {/** Added: forgot password link placeholder for now. */}
+            <p>
+                <a href="/forgot-password" style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Forgot password?
+                </a>
             </p>
         </div>
     )

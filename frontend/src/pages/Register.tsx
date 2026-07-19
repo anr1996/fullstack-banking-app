@@ -15,6 +15,7 @@ export default function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false); // Added: Loading state.
 
     /**
      * This will handle form submission
@@ -29,9 +30,12 @@ export default function Register() {
         // This will clear any previous error.
         setError('');
 
+        setIsLoading(true);
+
         try {
             // This will send POST /auth/register with name, email, and password.
             // The backend returns { token: "dcidGe..."} on success.
+            // The backend will now auto-create a CHECKING account for this user.
             const data = await apiFetch('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({name, email, password }),
@@ -43,8 +47,16 @@ export default function Register() {
             // This will redirect to the dashboard.
             navigate('/dashboard');
         } catch (error: any) {
-            // The display server errors (e.g., duplicate email).
-            setError(error.message || 'Registration failed');
+            // Added: Specific error messages for registration.
+            if (error.message.includes('409') || error.message.toLowerCase().includes('already')) {
+                setError('This email is already registered. Please try logging in.');
+            } else {
+                // The display server errors (e.g., duplicate email).
+                setError(error.message || 'Registration failed.');
+            }
+        } finally {
+            // Clear the loading state regardless of success or failure.
+            setIsLoading(false);
         }
     } 
 
@@ -61,17 +73,19 @@ export default function Register() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
+                        disabled={isLoading}
                     />
                 </div>
                 <div>
                     <label>Email</label>
                     <input
-                         type="email"
+                        type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
                         title="Please enter a valid email address (e.g., user@example.com)"
+                        disabled={isLoading}
                     />
                 </div>
                  <div>
@@ -81,13 +95,18 @@ export default function Register() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        minLength={8}
+                        title="The password must be at least 8 characters."
+                        disabled={isLoading}
                     />
                 </div>
 
                 {/** This will only show an error if it exists. */}
                 {error && <p className="error">{error}</p>}
 
-                <button type="submit">Register</button>
+                <button type="submit" disabled={isLoading}>
+                {isLoading ? 'Creating Account...' : 'Register'}    
+                </button>
             </form>
 
             <p>

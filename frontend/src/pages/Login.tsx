@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, setToken } from '../api/client';
+
 
 /**
  * The login page component
@@ -22,6 +23,35 @@ export default function Login() {
     const[password, setPassword] = useState('');
     const[error, setError] = useState('');
     const[isLoading, setIsLoading] =useState(false); // Added: loading stated.
+
+    useEffect(() => {
+        let intervalId: ReturnType <typeof setInterval>;
+
+        const checkBackend = async () => {
+            try {
+                const response = await fetch('/health', {
+                    method: 'GET',
+                    headers: {'Accept': 'application/json'}
+                });
+
+                if(response.ok) {
+                    console.log('Backend is ready.');
+                    setError('') // Clear the "starting up" message.
+                    clearInterval(intervalId); // stop the polling.
+                }
+            } catch (error) {
+                console.warn('Backend is not ready yet, retrying...');
+                setError('Service is temporarily unavailable. Please wait a moment.');
+            }
+        };
+
+        // Check immediately, then every 3 seconds.
+        checkBackend();
+        intervalId = setInterval(checkBackend, 3000);
+
+        // Cleanup when the component unmounts.
+        return () => clearInterval(intervalId);
+    }, []);
 
     /**
      * This will handle form submission
@@ -54,18 +84,35 @@ export default function Login() {
             // This is the client-side navigation (no page reload).
             navigate('/dashboard');
         } catch (error: any) {
+              // 1. Log the exact error to the console so we can debug it.
+            console.error('login failed with error:', error);
+
+            let errorMessage = 'Login failed. Please try again.';
+
             // Added: specific error messages.
-            if (error.message.includes('400')) {
-                setError('Invalid email or password format. Please check your inputs.');
-            } else if (error.message.includes('401')) {
-                setError('Invalid credentials. Please check your email and password.')
-            } else {
-                setError(error.message || 'Login failed.');
+            if (error.message) {
+                if (error.message.includes('400')) {
+                errorMessage = 'Invalid email or password format. Please check your input.'
+                } else if (error.message.includes('401')) {
+                    errorMessage = 'Invalid credentials. Please check your email and password.'
+                } else if (error.message.includes('403')) {
+                    // This will catch the "HTTP 403" and show a message instead.
+                    errorMessage = "Invalid credentials. Please check your email and password."
+                } else if (error.message.includes('Failed to fetch') || 
+                           error.message.includes('502') ||
+                           error.message.includes('503')) {
+                  errorMessage = 'The server is starting up. Please wait a few seconds and try again.';
+                } else {
+                    errorMessage = error.message;
+                }
             }
-        } finally {
-            setIsLoading(false); // Added: Clear Loading.
+
+            setError(errorMessage);
+        }     finally {
+                setIsLoading(false);
         }
-    }
+    }          
+    
 
     return (
         <div className="login-container">
@@ -84,7 +131,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                    pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$"
                     title="Please enter a valid email address (e.g., user@example.com)"
                     disabled={isLoading} // Added: Disable during request.
                     />

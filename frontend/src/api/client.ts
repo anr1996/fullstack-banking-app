@@ -21,7 +21,8 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
         ...((options.headers as Record<string, string>) || {}),
     };
 
-    if(token) {
+    // Only attach JWT for protected endpoints, not /auth/** (login/register) */
+    if(token && !url.startsWith('/auth')) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
@@ -46,6 +47,9 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
  * @param token (the JWT string.)
  */
 export function setToken(token: string) {
+    if (!token || typeof token !== 'string') {
+        throw new Error('The server did not return an authentication token.')
+    }
     localStorage.setItem('token', token);
 }
 
@@ -62,5 +66,6 @@ export function clearToken() {
  * @return (Returns true if a token exists.)
  */
 export function isLoggedIn(): boolean {
-    return !!localStorage.getItem('token');
+    const token = localStorage.getItem('token');
+    return !!token && token !== 'undefined' && token !== 'null';
 }

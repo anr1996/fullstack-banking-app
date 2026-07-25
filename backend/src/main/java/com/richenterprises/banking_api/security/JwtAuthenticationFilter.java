@@ -5,30 +5,30 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import
-org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+
 /**
-
- * The JWT authentication filter. 
- * Intercepts every HTTP request, validates the Bearer token,
- * and sets the authenticated user in the SecurityContext.
+ * The JWT authentication filter. Intercepts every HTTP request, validates the Bearer token, and 
+ * sets the authenticated user in the SecurityContext.
  */
-
 @Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter{
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final String BEARER_PREFIX = "Bearer ";
+
     private final JwtUtil jwtUtil;
 
     /**
      * The constructor injection of JwtUtil. 
-     * Spring will automatically provide the JwtUtil bean from the application context.
+     * 
+     * @param jwtUtil (The utility that validates tokens and extracts claims.)
      */
     public JwtAuthenticationFilter(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
@@ -38,61 +38,55 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
      * This is the core filter logic which runs once per request. 
      * @param request (The HTTP request.)
      * @param response (The HTTP response.)
-     * @param filterChain (The chain of remaing filters to execute.)
+     * @param filterChain (The chain of remaining filters to execute.)
+     * @throws ServletException (Throws if the downstream chain fails.)
+     * @throws IOException (Throws if reading or writing the request fails.)
      */
-
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // Step 1: The authorization header is extracted.
         String authHeader = request.getHeader("Authorization");
-
-        // Step 2: Check if the header exists and starts with "Bearer ". 
-        if(authHeader == null || !authHeader.startsWith("Bearer ")) {
-            // No token is present. Therefore, the request will continue unauthenticated.
-            // The next filter will handle access control
+            
+        // Without a Bearer token the request continues unauthenticated, and the authorization
+        // rules in SecurityConfig decide whether that is allowed.
+        if(authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Step 3: The (remove "Bearer" prefix) token string is extracted. 
-        String token = authHeader.substring(7);
+        String token = authHeader.substring(BEARER_PREFIX.length());
 
-        // Step 4: Validate the token
+        // An invalid or expired token is treated as a no token at all. The request proceeds
+        // unauthenticated rather than being rejected here, so the same 401 handling applies as
+        // for a missing token.
         if (!jwtUtil.validateToken(token)) {
-            // If the token is invalid or expired then do not authenticate.
             filterChain.doFilter(request, response);
             return;
         }
-
-        // Step 5: The user identity will be extracted from the token.
+        
         String email = jwtUtil.extractEmail(token);
         String role = jwtUtil.extractRole(token);
 
-        // Step 6: Build a UserDetails object which is Spring security's 
-        // representation of a user.
-        UserDetails userDetails = User.builder()
-                                      .username(email)
-                                      .password("")
-                                      .roles(role)
-                                      .build();
-        
-        // Step 7: An authentication token will be created.
-        // The third parameter (authorities) is empty because the roles are set on UserDetails.
-        UsernamePasswordAuthenticationToken authentication = 
-        new UsernamePasswordAuthenticationToken(
-            userDetails,
-            null,
-            userDetails.getAuthorities()
-        );
+        // A token can validate but still be missing a claim we depend on. Guard against that 
+        // rather than building an authentication with null fields.
+        if (email == null || role == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        // Step 8: Store the authentication in the SecurityContext.
-        // This will make the user's "Logged in" for the duration of this request.
+        // The claim stores the bare role name (ex: ADMIN). Spring's authority convention requires
+        // the ROLE_ prefix, so it is added here. This must stay consistent with how the role is 
+        // written in Authservice: if the claim ever includes the prefix, remove it here to avoid
+        // ROLE_ROLE.
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
+
+        UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(email, null, List.of(authority));
+
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Step 9: This will pass the request to the next filter in the chain.
         filterChain.doFilter(request, response);
     }
 

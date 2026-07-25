@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, setToken } from '../api/client';
 
@@ -21,36 +21,50 @@ export default function Login() {
      */
     const[email, setEmail] = useState('');
     const[password, setPassword] = useState('');
-    const[error, setError] = useState('');
-    const[isLoading, setIsLoading] =useState(false); // Added: loading stated.
+    const[isLoading, setIsLoading] =useState(false); // Added: loading state.
 
+    // Form-level errors: handles bad credentials, malformed input.
+    const [formError, setFormError] = useState('');
+
+    // Service availability. It is owned exclusively by the health check.
+    const [serviceDown, setServiceDown] = useState(false);
+
+    // The interval ID lives in a ref so it survives re-renders.
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+
+    /**
+     * This polls the health endpoint until the service responds, then stops.
+     * It never writes to form the error state.
+     */
     useEffect(() => {
-        let intervalId: ReturnType <typeof setInterval>;
-
-        const checkBackend = async () => {
-            try {
-                const response = await fetch('/health', {
-                    method: 'GET',
-                    headers: {'Accept': 'application/json'}
-                });
-
-                if(response.ok) {
-                    console.log('Backend is ready.');
-                    setError('') // Clear the "starting up" message.
-                    clearInterval(intervalId); // stop the polling.
-                }
-            } catch (error) {
-                console.warn('Backend is not ready yet, retrying...');
-                setError('Service is temporarily unavailable. Please wait a moment.');
+        const stopPolling = () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
             }
         };
 
-        // Check immediately, then every 3 seconds.
-        checkBackend();
-        intervalId = setInterval(checkBackend, 3000);
+        const checkService = async () => {
+            try {
+                const response = await fetch('/health', {
+                    method: 'GET',
+                    headers: {Accept: 'application/json'},
+                });
 
-        // Cleanup when the component unmounts.
-        return () => clearInterval(intervalId);
+                if (response.ok) {
+                    setServiceDown(false);
+                    stopPolling();
+                }
+            } catch {
+                setServiceDown(true);
+            }
+        }
+
+        checkService();
+        intervalRef.current = setInterval(checkService, 3000);
+
+        return stopPolling;
     }, []);
 
     /**
@@ -63,10 +77,7 @@ export default function Login() {
     async function handleSubmit(e: React.FormEvent) {
         // This will stop the browser from reloading the page on form submit.
         e.preventDefault();
-
-        // This clears any previous error message before attempting a new login.
-        setError('');
-
+        setFormError('');
         setIsLoading(true);
 
         try {
@@ -77,39 +88,28 @@ export default function Login() {
                 body: JSON.stringify({ email, password }),
             });
 
-            // This will store the JWT token in localStorage so future requests are authenticated.
-            setToken(data.token);
+            // This will throw if the token is missing, so we never navigate on a bad login.
+            setToken(data?.token);
+            navigate('/dashboard', { replace: true });
+        } catch (err: any) {
+            console.error('login failed:', err);
+            const message = err?.message ?? '';
 
-            // This will redirect to the dashboard page.
-            // This is the client-side navigation (no page reload).
-            navigate('/dashboard');
-        } catch (error: any) {
-              // 1. Log the exact error to the console so we can debug it.
-            console.error('login failed with error:', error);
-
-            let errorMessage = 'Login failed. Please try again.';
-
-            // Added: specific error messages.
-            if (error.message) {
-                if (error.message.includes('400')) {
-                errorMessage = 'Invalid email or password format. Please check your input.'
-                } else if (error.message.includes('401')) {
-                    errorMessage = 'Invalid credentials. Please check your email and password.'
-                } else if (error.message.includes('403')) {
-                    // This will catch the "HTTP 403" and show a message instead.
-                    errorMessage = "Invalid credentials. Please check your email and password."
-                } else if (error.message.includes('Failed to fetch') || 
-                           error.message.includes('502') ||
-                           error.message.includes('503')) {
-                  errorMessage = 'The server is starting up. Please wait a few seconds and try again.';
-                } else {
-                    errorMessage = error.message;
-                }
+            if (message.includes('401') || message.includes('403')) {
+                setFormError('Invalid email or password.');
+            } else if (message.includes('400')) {
+                setFormError('Please check your email and password format.');
+            } else if (
+                message.includes('Failed to fetch') || 
+                message.includes('502') || 
+                message.includes('503')
+            ) {
+                setFormError("We could not reach the service. Please try again in a moment.")
+            } else {
+                setFormError(message || 'Login failed. Please try again.');
             }
-
-            setError(errorMessage);
-        }     finally {
-                setIsLoading(false);
+        } finally {
+            setIsLoading(false);
         }
     }          
     
@@ -117,6 +117,12 @@ export default function Login() {
     return (
         <div className="login-container">
             <h1>Bank Login</h1>
+
+            {serviceDown && (
+                <p className="warning">
+                    The service is temporarily unavailable. Please wait a moment.
+                </p>
+            )}
 
             {/** The onSubmit handler intercepts the browser's default form submission. */}
             <form onSubmit={handleSubmit}>
@@ -131,8 +137,6 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$"
-                    title="Please enter a valid email address (e.g., user@example.com)"
                     disabled={isLoading} // Added: Disable during request.
                     />
                 </div>
@@ -147,16 +151,14 @@ export default function Login() {
                     />
                 </div>
 
-                {/** The conditional rendering: only show the error paragraph if error is not
-                 * empty.
-                 */}
-                {error && <p className="error">{error}</p>}
+               {formError && <p className="error">{formError}</p>}
+
                 <button type="submit" disabled={isLoading}>
                     {isLoading ? 'Logging in...' : 'Login'}
                     </button>
             </form>
             <p>
-                no account? <a href="/register">Register</a>
+                No account? <a href="/register">Register</a>
             </p>
 
             {/** Added: forgot password link placeholder for now. */}

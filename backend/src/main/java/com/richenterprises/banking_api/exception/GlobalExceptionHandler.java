@@ -73,6 +73,43 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * This handles a missing account.
+     * It returns 404 whether the account does not exist or the caller does not own it.
+     * So an attacker cannot enumerate account IDs by probing different numbers.
+     * 
+     * @param ex (The thrown exception.)
+     * @return (Returns 404 Not Found.)
+     */
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountNotFound(AccountNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());    
+    }
+
+    /**
+     * This handles insufficient funds during a withdrawl or transfer.
+     * 422 Unprocessable Entity: syntactically valid but violates a business rule.
+     * 
+     * @param ex (The thrown exception.)
+     * @return (Returns 422 Unprocessable Entity.)
+     */
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ResponseEntity<Map<String, Object>> handleInsufficientFunds(InsufficientFundsException ex) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    /**
+     * This handles operations attempted on a frozen account.
+     * 409 Conflict: the current state of the resource prevents the operation.
+     * 
+     * @param ex (The thrown exception.)
+     * @return (Returns 409 Conflict.)
+     */
+    @ExceptionHandler(AccountFrozenException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountFrozen(AccountFrozenException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /**
      * This is the catch all for any unhandled exception.
      * It returns a generic message so an unexpected error never leaks a stack trace
      * or internal detail to the client. The real cause should be logged.
